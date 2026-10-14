@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BailSetu — Custody-time tracker + bail draft assistant (Demo)</title>
+<style>
+  :root{--ink:#1a2a3a;--blue:#1f3a5f;--accent:#c75b12;--bg:#f2f4f7;--card:#ffffff;--line:#d9dee4;--muted:#5b6b7c;--focus:#e67e22}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6;font-size:16px}
+  button,input,select,textarea{font:inherit}
+  button{cursor:pointer}
+  :focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+  header{background:var(--blue);color:#fff;padding:20px}
+  header h1{margin:0 0 4px;font-size:30px}
+  header p{margin:0;opacity:.94;max-width:960px}
+  .topbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;max-width:1100px;margin:0 auto}
+  .lang{display:flex;gap:6px;align-items:center}
+  .lang button{background:transparent;border:2px solid #fff;color:#fff;border-radius:20px;padding:6px 14px;min-height:40px}
+  .lang button[aria-pressed="true"]{background:#fff;color:var(--blue);font-weight:700}
+  .banner{background:#fff3cd;border-bottom:2px solid #e6a800;padding:12px 20px;font-size:15px}
+  .banner strong{color:#7a5200}
+  main{max-width:1100px;margin:0 auto;padding:18px 16px 40px}
+  nav.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+  nav.tabs button{background:#fff;border:2px solid var(--line);border-radius:10px;padding:12px 18px;min-height:48px;font-weight:600}
+  nav.tabs button[aria-selected="true"]{background:var(--blue);color:#fff;border-color:var(--blue)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:16px}
+  .card h2{margin-top:0}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .stat{border:1px solid var(--line);border-radius:10px;padding:14px;background:#fff}
+  .stat .n{font-size:32px;font-weight:700;line-height:1}
+  .stat .l{font-size:14px;color:var(--muted);margin-top:4px}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  input[type=text],input[type=number],input[type=date],input[type=password],select,textarea{padding:11px 12px;border:1px solid #b9c2cc;border-radius:8px;font-size:16px;min-height:46px}
+  textarea{width:100%;min-height:110px;resize:vertical}
+  .btn{background:var(--blue);color:#fff;border:0;border-radius:8px;padding:12px 18px;font-size:16px;min-height:48px}
+  .btn.secondary{background:#e9edf1;color:var(--ink)}
+  .btn:disabled{background:#b9c2cc;cursor:not-allowed}
+  table{width:100%;border-collapse:collapse;font-size:14.5px}
+  th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+  tr{cursor:pointer}
+  tr:hover{background:#f7f9fb}
+  tr.selected{background:#eef4fb}
+  .badge{display:inline-block;padding:4px 11px;border-radius:20px;color:#fff;font-size:13px;font-weight:600;white-space:nowrap}
+  .b-past{background:#b3261e}.b-approaching{background:#b45309}.b-below{background:#2e7d32}
+  .b-blocked{background:#616161}.b-needs{background:#1565c0}.b-manual{background:#6a1b9a}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .reason{margin:6px 0;padding-left:18px}
+  .reason li{margin:4px 0}
+  pre.draft{white-space:pre-wrap;background:#fbfaf7;border:1px solid var(--line);border-radius:8px;padding:14px;font-size:14px;line-height:1.6}
+  .audit{font-size:14px}
+  .audit li{margin:6px 0}
+  .muted{color:var(--muted);font-size:14px}
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .step{border:1px solid var(--line);border-radius:10px;padding:14px;background:#fff}
+  .step b{display:block;margin-bottom:4px}
+  .big-status{font-size:22px;font-weight:700;margin:6px 0}
+  .meaning{background:#eef4fb;border-left:5px solid var(--blue);border-radius:6px;padding:12px 14px;margin:12px 0}
+  .nextstep{background:#eef7ee;border-left:5px solid #2e7d32;border-radius:6px;padding:12px 14px;margin:12px 0}
+  .warn{background:#fff8e1;border-left:5px solid #e6a800;border-radius:6px;padding:12px 14px;margin:12px 0}
+  .err{background:#fdecea;border-left:5px solid #b3261e;border-radius:6px;padding:12px 14px;margin:12px 0}
+  @media(max-width:760px){.stats,.grid2,.steps{grid-template-columns:1fr}header h1{font-size:24px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="topbar">
+    <div>
+      <h1>BailSetu</h1>
+      <p data-i18n="subtitle">Custody-time tracker + bail draft assistant for undertrials — shows who may be past the Section 479 (BNSS) bail threshold, explains why, and drafts the application for human review. Rule-based and AI-ready: extraction and triage use transparent rules today; the same pipeline is designed for an AI layer over authorised records. MY Bharat Hack for Social Cause 2027 — Theme 4: Governance &amp; Civic Technology.</p>
+    </div>
+    <div class="lang" role="group" aria-label="Language">
+      <button id="langEn" aria-pressed="true">English</button>
+      <button id="langHi" aria-pressed="false">हिन्दी</button>
+    </div>
+  </div>
+</header>
+<div class="banner"><strong data-i18n="demo">DEMONSTRATION ONLY.</strong> <span data-i18n="demoText">All records below are fictional sample data. BailSetu shows <em>potential</em> eligibility only — an authorised legal professional must review and approve every application before filing. No real personal data is used or stored; everything runs in your browser.</span></div>
+<main>
+  <nav class="tabs" role="tablist" aria-label="Choose your role" id="tablist">
+    <button role="tab" id="tab-family" aria-selected="true" aria-controls="view-family" data-i18n="tabFamily">👨‍👩‍👦 Undertrial &amp; Family</button>
+    <button role="tab" id="tab-public" aria-selected="false" aria-controls="view-public" data-i18n="tabPublic">🌍 Public</button>
+    <button role="tab" id="tab-officer" aria-selected="false" aria-controls="view-officer" data-i18n="tabOfficer">🏛️ Officer (Jail / DLSA / Court)</button>
+  </nav>
+
+  <!-- ================= FAMILY VIEW ================= -->
+  <section id="view-family" role="tabpanel" aria-labelledby="tab-family">
+    <div class="card">
+      <h2 data-i18n="famTitle">Is your family member eligible to apply for bail?</h2>
+      <p data-i18n="famIntro">BailSetu checks whether a person in jail may be able to apply for bail under a law called <b>Section 479</b>. The law says: if a person has spent a long time in jail while waiting for trial, they may be released on bail. Enter the undertrial ID and your family access code below.</p>
+      <div class="controls">
+        <label for="famSearch" data-i18n="famSearchLabel">Undertrial ID</label>
+        <input type="text" id="famSearch" placeholder="e.g. UT-001" aria-label="Undertrial ID">
+        <label for="famCode" data-i18n="famCodeLabel">Family access code</label>
+        <input type="password" id="famCode" placeholder="e.g. DEMO-2026" aria-label="Family access code" autocomplete="off">
+        <button class="btn" id="famBtn" data-i18n="famBtn">Check status</button>
+      </div>
+      <p class="muted"><span data-i18n="famDemoCode">Demo access code for all sample records: DEMO-2026</span> · <span data-i18n="famHint">Try UT-001, UT-002 or UT-004 to see the different outcomes. Legal documents are in English.</span></p>
+    </div>
+    <div id="famResult"></div>
+    <div class="card">
+      <h2 data-i18n="famPrivacyTitle">Your information stays private</h2>
+      <p data-i18n="famPrivacy">Records are never listed publicly. In deployment, each family gets a unique access code from the jail or the DLSA, and a family sees only its own family member's record. Without the correct code, nothing is shown.</p>
+    </div>
+    <div class="card">
+      <h2 data-i18n="famHelpTitle">Need free legal help?</h2>
+      <p data-i18n="famHelp">Every district has a <b>District Legal Services Authority (DLSA)</b> that gives free legal aid to people who cannot afford a lawyer, including undertrials. Ask the jail authorities or the DLSA office in your district. BailSetu does not replace a lawyer — it helps the lawyer and the family see the position clearly.</p>
+    </div>
+  </section>
+
+  <!-- ================= PUBLIC VIEW ================= -->
+  <section id="view-public" role="tabpanel" aria-labelledby="tab-public" hidden>
+    <div class="card">
+      <h2 data-i18n="pubTitle">The problem, in plain numbers</h2>
+      <div class="stats">
+        <div class="stat"><div class="n">4.34 lakh</div><div class="l" data-i18n="pubS1">Undertrials in Indian prisons (NCRB, 2022)</div></div>
+        <div class="stat"><div class="n">75.8%</div><div class="l" data-i18n="pubS2">of all prisoners are undertrials — in jail, not convicted</div></div>
+        <div class="stat"><div class="n">8.6%</div><div class="l" data-i18n="pubS3">of undertrials held for over 3 years (NCRB, 2022)</div></div>
+        <div class="stat"><div class="n" data-i18n="pubS4Num">Nearly half</div><div class="l" data-i18n="pubS4">of undertrials are under 30 (NCRB Prison Statistics India)</div></div>
+      </div>
+      <p data-i18n="pubProblem">The law already says these people must be released on bail after a fixed time in custody (Section 479). But nobody tracks custody time systematically — so people stay in jail for years after the law says they can apply for bail. BailSetu fixes the tracking, not the law.</p>
+    </div>
+    <div class="card">
+      <h2 data-i18n="pubDemoTitle">What this demo shows (sample data)</h2>
+      <div class="stats" id="pubStats"></div>
+      <p class="muted" data-i18n="pubDemoNote">Counts only — no names or personal details are shown in this view. The demo uses 8 fictional records.</p>
+    </div>
+    <div class="card">
+      <h2 data-i18n="pubHowTitle">How BailSetu helps</h2>
+      <div class="steps">
+        <div class="step"><b data-i18n="pubHow1T">1. Finds the cases</b><span data-i18n="pubHow1">Custody time is calculated from authorised prison records, so people who crossed the legal limit are not missed.</span></div>
+        <div class="step"><b data-i18n="pubHow2T">2. Explains in plain words</b><span data-i18n="pubHow2">Every flag comes with reasons anyone can read — no legal degree needed to understand the position.</span></div>
+        <div class="step"><b data-i18n="pubHow3T">3. A human decides</b><span data-i18n="pubHow3">A legal professional reviews every draft before filing. The court always makes the final decision.</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2 data-i18n="pubSafeTitle">Safeguards — your data stays protected</h2>
+      <ul>
+        <li data-i18n="pubSafe1"><b>Human approval first.</b> No application is ever filed automatically.</li>
+        <li data-i18n="pubSafe2"><b>Only authorised access.</b> In deployment, only authorised officers and legal professionals see real records, with role-based access and audit logs.</li>
+        <li data-i18n="pubSafe3"><b>No new law, no new hardware.</b> BailSetu makes the existing system work — jail superintendents are already required to apply when the threshold is crossed (Section 479(3)).</li>
+        <li data-i18n="pubSafe4"><b>Nothing hidden.</b> Every decision shows its reasons; nothing is decided by a black box.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ================= OFFICER VIEW ================= -->
+  <section id="view-officer" role="tabpanel" aria-labelledby="tab-officer" hidden>
+    <p class="muted">Officer view is English-only by design: court and jail records, and the draft application, are in English. The family and public views offer English / हिन्दी.</p>
+    <div class="card">
+      <h2>Section 479(3) — duty of the jail superintendent</h2>
+      <p>When an undertrial crosses the Section 479 threshold, the <b>Superintendent of the jail must forthwith apply in writing to the Court</b> for release on bail. This panel is the action queue for that duty: <span id="dutyCount"></span></p>
+      <div class="stats" id="stats"></div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-top:0">Assisted extraction from remand / warrant text</h2>
+      <p class="muted">Rule-based, <b>not AI</b>: it finds dates and section numbers in pasted text using transparent patterns, so every extraction is auditable. In deployment, an AI layer would do this extraction from authorised documents — under the same human review. <b>Always verify before use: extraction can be wrong.</b></p>
+      <label for="extractText">Paste remand order / warrant text</label>
+      <textarea id="extractText" placeholder="Example: The accused was arrested on 12/03/2024 and remanded to judicial custody on 15 March 2024 under Section 303 BNS. Next hearing 20-04-2024."></textarea>
+      <div class="controls" style="margin-top:10px">
+        <button class="btn" id="extractBtn">Extract details</button>
+        <button class="btn secondary" id="extractSampleBtn">Load sample text</button>
+      </div>
+      <div id="extractResult" style="display:none;margin-top:12px"></div>
+    </div>
+
+    <div class="card">
+      <div class="controls">
+        <input type="text" id="search" placeholder="Search ID, name, offence or section…" style="flex:1;min-width:200px" aria-label="Search records">
+        <select id="filter" aria-label="Filter by status">
+          <option value="all">All statuses</option>
+          <option value="past">May be past threshold</option>
+          <option value="approaching">Approaching threshold (30 days)</option>
+          <option value="below">Below threshold</option>
+          <option value="blocked">Blocked — multiple cases (S.479(2))</option>
+          <option value="needs-info">Needs information</option>
+          <option value="manual-review">Needs manual legal review</option>
+        </select>
+        <button class="btn" id="addBtn">+ Add undertrial</button>
+      </div>
+      <div style="overflow-x:auto;margin-top:12px">
+        <table>
+          <caption class="muted" style="text-align:left;padding:6px 0">Sample records (fictional). Section and maximum sentence come from the BNS lookup. Click a row — or press Enter on it — to open its reasoning and draft.</caption>
+          <thead><tr><th scope="col">ID</th><th scope="col">Undertrial</th><th scope="col">Offence</th><th scope="col">Section</th><th scope="col">Max sentence</th><th scope="col">Custody since</th><th scope="col">Days counted</th><th scope="col">Threshold date</th><th scope="col">Status</th></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <p class="muted" id="tableNote"></p>
+    </div>
+
+    <div class="card" id="detailCard" style="display:none">
+      <h2 style="margin-top:0" id="detailTitle">Record</h2>
+      <div class="grid2">
+        <div><h3 style="margin-top:0">Record</h3><div id="detailFields"></div></div>
+        <div><h3 style="margin-top:0">Eligibility reasoning</h3><ul class="reason" id="detailReasons"></ul></div>
+      </div>
+      <button class="btn" id="draftBtn" style="margin-top:10px">Generate draft bail application</button>
+      <p class="muted" id="draftHint"></p>
+      <div id="draftWrap" style="display:none;margin-top:12px">
+        <h3>Draft application <span class="badge b-past" id="draftBadge">DRAFT — NOT FILED</span></h3>
+        <pre class="draft" id="draftText"></pre>
+        <label style="display:block;margin:10px 0"><input type="checkbox" id="approveCheck"> I confirm an authorised legal professional has reviewed this draft and approves it for filing.</label>
+        <button class="btn" id="approveBtn" disabled>Mark as approved</button>
+        <span id="approveMsg" style="margin-left:10px"></span>
+      </div>
+    </div>
+
+    <div class="card" id="addCard" style="display:none">
+      <h2 style="margin-top:0">Add undertrial</h2>
+      <div class="grid2">
+        <div><label>Undertrial ID<br><input type="text" id="fId" placeholder="e.g. UT-009" style="width:100%"></label></div>
+        <div><label>Display name (sample only)<br><input type="text" id="fName" placeholder="e.g. Sample I" style="width:100%"></label></div>
+        <div><label>Offence (BNS lookup)<br><select id="fOffenceSel" style="width:100%"></select></label>
+        <input type="text" id="fOffenceCustom" placeholder="Offence name (for Custom)" style="width:100%;display:none;margin-top:6px"></div>
+        <div><label>Maximum sentence (years)<br><input type="number" id="fMax" min="0" step="0.5" placeholder="e.g. 3" style="width:100%"></label></div>
+        <div><label>Custody start date<br><input type="date" id="fCustody" style="width:100%"></label></div>
+        <div><label>Delay attributable to the accused (days)<br><input type="number" id="fDelay" min="0" step="1" placeholder="0" style="width:100%"></label></div>
+        <div><label>Jail / Court (optional)<br><input type="text" id="fJail" placeholder="e.g. District Jail, Sagar" style="width:100%"></label></div>
+      </div>
+      <p class="muted" id="lookupNote">Max sentence and the death/life flag come from the BNS lookup for the selected section — verify against the charge sheet. Choose “Custom / other offence” to enter them manually.</p>
+      <p class="muted">Delay attributable to the accused is excluded from the custody period (Explanation to S.479). Enter 0 if none.</p>
+      <label style="display:block;margin:10px 0"><input type="checkbox" id="fFirst"> First-time offender (never convicted before) — threshold becomes one-third instead of one-half</label>
+      <label style="display:block;margin:0 0 10px"><input type="checkbox" id="fMulti"> Multiple cases / offences pending — S.479(2) blocks release under S.479</label>
+      <label style="display:block;margin:0 0 14px"><input type="checkbox" id="fDeath"> Offence punishable with death or life imprisonment — needs manual legal review</label>
+      <button class="btn" id="saveBtn">Add record</button>
+      <button class="btn secondary" id="cancelBtn">Cancel</button>
+      <p class="muted" id="formMsg"></p>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-top:0">Audit log</h2>
+      <p class="muted">Every view, draft, approval and added record is logged. In this demo the log persists in your browser and each entry is chained to the previous one with a hash — use Verify to check integrity. In deployment the log is server-side, append-only, and tied to authenticated accounts.</p>
+      <div class="controls" style="margin-bottom:10px">
+        <button class="btn secondary" id="verifyAuditBtn">Verify audit log</button>
+        <span id="verifyResult"></span>
+      </div>
+      <ul class="audit" id="audit"></ul>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-top:0">Legal basis &amp; safeguards</h2>
+      <p><b>Section 479, Bharatiya Nagarik Suraksha Sanhita (BNSS), 2023:</b> an undertrial must be released on bail after detention of one-half of the maximum sentence for the offence — one-third for first-time offenders. S.479(2): no release under S.479 where multiple cases are pending. S.479(3): the jail superintendent must apply to the court when the threshold is crossed. The provisos to S.479(1) let the court, after hearing the Public Prosecutor and recording reasons, order continued detention — release is not automatic. The Explanation to S.479 excludes delay caused by the accused from the custody period. S.479 does not apply to offences punishable with death or life imprisonment. The Supreme Court (23 Aug 2024) held S.479 applies retrospectively, with steps to be taken as expeditiously as possible and preferably within three months.</p>
+      <ul>
+        <li><b>Potential eligibility only.</b> BailSetu never labels anyone definitively eligible on detention duration alone; the court decides release.</li>
+        <li><b>Human approval.</b> No application is filed until an authorised legal professional reviews and approves the draft.</li>
+        <li><b>Data minimisation &amp; access control.</b> Deployment uses authorised prison records and verified court documents, strict role-based access, and audit logs. eCourts data is a supplementary source only. Families see only their own record, behind an access code.</li>
+        <li><b>Transparent rules.</b> In this demo the triage uses published rules implementing S.479, with threshold dates computed on the calendar (leap-year safe) and shifted by any accused-caused delay. Section and maximum sentence come from a BNS lookup. In deployment, an AI layer would extract and reconcile custody dates from authorised records under the same rules and the same human review.</li>
+      </ul>
+      <p class="muted">Figures: NCRB Prison Statistics India 2022 — 4,34,302 undertrials, 75.8% of all prisoners; 8.6% of undertrials held over 3 years. AI disclosure: this demo’s logic and copy were drafted with AI assistance (Muse, Meta’s personal AI agent) and validated against the BNSS/BNS text; the extraction feature is rule-based pattern matching, not AI; no real personal data is used. Sample records are fictional.</p>
+    </div>
+  </section>
+</main>
+<script>
+// ---------- Pure logic (no DOM) ----------
+// Dates are handled in UTC. Threshold DATES use calendar arithmetic (months),
+// so leap years cannot shift a court-facing date by a day or two.
+function parseDate(s){ if(!s) return null; var d = new Date(s + "T00:00:00Z"); return isNaN(d) ? null : d; }
+function fmtDate(d){ if(!d) return "—"; return d.toISOString().slice(0,10).split("-").reverse().join("/"); }
+function isoDate(d){ if(!d) return ""; return d.toISOString().slice(0,10); }
+function addDays(d, n){ var c = new Date(d.getTime()); c.setUTCDate(c.getUTCDate() + n); return c; }
+function addMonths(d, months){
+  var y = d.getUTCFullYear(), m = d.getUTCMonth() + months, day = d.getUTCDate();
+  var target = new Date(Date.UTC(y, m, 1));
+  var last = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
+  target.setUTCDate(Math.min(day, last));
+  return target;
+}
+function daysBetween(a, b){ return Math.floor((b.getTime() - a.getTime()) / 86400000); }
+function todayUTC(){ var n = new Date(); return new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate())); }
+
+// ---------- BNS offence lookup ----------
+// Every entry is a (section, offence, maximum sentence) triple verified against
+// the BNS text. The lookup is the single source of truth for maxYears and the
+// death/life flag, so a wrong pairing (e.g. dacoity at 10 years) cannot be
+// typed in by hand. deathOrLife entries carry maxYears null: S.479 does not
+// apply to them at all, so no threshold is meaningful.
+var OFFENCES = [
+  { section:"BNS s.303(2)", offence:"Theft", maxYears:3, deathOrLife:false },
+  { section:"BNS s.304(2)", offence:"Snatching", maxYears:3, deathOrLife:false },
+  { section:"BNS s.305", offence:"Theft in dwelling house / conveyance", maxYears:7, deathOrLife:false },
+  { section:"BNS s.307", offence:"Theft after preparation", maxYears:10, deathOrLife:false },
+  { section:"BNS s.308(2)", offence:"Extortion", maxYears:7, deathOrLife:false },
+  { section:"BNS s.309(4)", offence:"Robbery", maxYears:10, deathOrLife:false },
+  { section:"BNS s.310(2)", offence:"Dacoity", maxYears:null, deathOrLife:true },
+  { section:"BNS s.316(2)", offence:"Criminal breach of trust", maxYears:5, deathOrLife:false },
+  { section:"BNS s.318(2)", offence:"Cheating", maxYears:3, deathOrLife:false },
+  { section:"BNS s.318(4)", offence:"Cheating and dishonestly inducing delivery of property", maxYears:7, deathOrLife:false },
+  { section:"BNS s.115(2)", offence:"Voluntarily causing hurt", maxYears:1, deathOrLife:false },
+  { section:"BNS s.117(2)", offence:"Voluntarily causing grievous hurt", maxYears:7, deathOrLife:false },
+  { section:"BNS s.351(2)", offence:"Criminal intimidation", maxYears:2, deathOrLife:false },
+  { section:"BNS s.332(c)", offence:"House-trespass in order to commit offence punishable with imprisonment", maxYears:2, deathOrLife:false },
+  { section:"BNS s.103(1)", offence:"Murder", maxYears:null, deathOrLife:true }
+];
+function findOffence(section){
+  for (var i = 0; i < OFFENCES.length; i++) { if (OFFENCES[i].section === section) return OFFENCES[i]; }
+  return null;
+}
+
+// ---------- Sample records ----------
+// Dates are RELATIVE to today, so the designed status mix is stable no matter
+// when the page is opened. Every record carries its BNS section, matched to
+// its maximum sentence via the lookup above.
+function buildSamples(today){
+  today = today || todayUTC();
+  function daysAgo(n){ var d = new Date(today.getTime()); d.setUTCDate(d.getUTCDate() - n); return isoDate(d); }
+  function withSection(rec){
+    var o = findOffence(rec.section);
+    if (o) { rec.offence = o.offence; rec.maxYears = o.maxYears === null ? 0 : o.maxYears; rec.deathOrLife = o.deathOrLife; }
+    return rec;
+  }
+  return [
+    withSection({ id:"UT-001", name:"Sample A", section:"BNS s.303(2)", custodyStart:daysAgo(900), delayDays:0, firstTime:false, multipleCases:false, jail:"District Jail, Sagar" }),
+    withSection({ id:"UT-002", name:"Sample B", section:"BNS s.318(4)", custodyStart:daysAgo(831), delayDays:0, firstTime:true, multipleCases:false, jail:"District Jail, Sagar" }),
+    withSection({ id:"UT-003", name:"Sample C", section:"BNS s.115(2)", custodyStart:daysAgo(330), delayDays:0, firstTime:false, multipleCases:false, jail:"District Jail, Sagar" }),
+    withSection({ id:"UT-004", name:"Sample D", section:"BNS s.316(2)", custodyStart:daysAgo(600), delayDays:0, firstTime:false, multipleCases:true, jail:"District Jail, Sagar" }),
+    withSection({ id:"UT-005", name:"Sample E", section:"BNS s.351(2)", custodyStart:"", delayDays:0, firstTime:false, multipleCases:false, jail:"District Jail, Sagar" }),
+    withSection({ id:"UT-006", name:"Sample F", section:"BNS s.103(1)", custodyStart:daysAgo(1000), delayDays:0, firstTime:false, multipleCases:false, jail:"District Jail, Sagar" }),
+    withSection({ id:"UT-007", name:"Sample G", section:"BNS s.332(c)", custodyStart:daysAgo(320), delayDays:20, firstTime:true, multipleCases:false, jail:"District Jail, Sagar" }),
+    withSection({ id:"UT-008", name:"Sample H", section:"BNS s.309(4)", custodyStart:daysAgo(300), delayDays:0, firstTime:false, multipleCases:false, jail:"District Jail, Sagar" })
+  ];
+}
+
+// Wording for the past-threshold case. Exactly at the threshold (0 days past)
+// is "reached today", not "exceeded by 0 days".
+function daysPastText(daysPast){
+  if (daysPast === 0) return "Reached the threshold today — eligible to be considered for release on bail under S.479(1). Human review required; the court decides release.";
+  return "Past the threshold by " + daysPast + " days — eligible to be considered for release on bail under S.479(1). Human review required; the court decides release.";
+}
+
+// Implements BNSS Section 479 triage. Returns status + human-readable reasons.
+// status: past | approaching | below | blocked | needs-info | manual-review
+// Custody counted = days in custody MINUS delay attributable to the accused
+// (Explanation to S.479). The court may still order continued detention under
+// the provisos to S.479(1) after hearing the Public Prosecutor.
+// The DISPLAYED threshold date is shifted forward by the delay: it is the
+// calendar date on which the accused actually crosses the threshold, because
+// delayed days do not count. The comparison still uses the unshifted
+// thresholdDays against effectiveDays.
+function computeEligibility(rec, today){
+  today = today || todayUTC();
+  var delayDays = Math.max(0, Math.floor(rec.delayDays || 0));
+  var missing = [];
+  if (!rec.custodyStart) missing.push("custody start date");
+  if (!(rec.maxYears > 0)) missing.push("maximum sentence");
+  if (rec.multipleCases) return { status:"blocked", delayDays:delayDays, reasons:["Multiple cases / offences pending — S.479(2) bars release on bail under S.479. This record needs a different legal route; BailSetu will not generate a S.479 draft."] };
+  if (rec.deathOrLife) return { status:"manual-review", delayDays:delayDays, reasons:["Offence punishable with death or life imprisonment — S.479 speaks of a “maximum period of imprisonment”, so this record needs manual review by an authorised legal professional before any S.479 step."] };
+  if (missing.length) return { status:"needs-info", missing:missing, delayDays:delayDays, reasons:["Cannot compute: missing " + missing.join(" and ") + "."] };
+  var custodyDate = parseDate(rec.custodyStart);
+  if (!custodyDate) return { status:"needs-info", missing:["valid custody start date"], delayDays:delayDays, reasons:["Cannot compute: custody start date is not a valid date."] };
+  var custodyDays = daysBetween(custodyDate, today);
+  var effectiveDays = Math.max(0, custodyDays - delayDays);
+  // Threshold on the calendar: half / one-third of the maximum sentence in months.
+  var divisor = rec.firstTime ? 3 : 2;
+  var thresholdMonths = Math.round(rec.maxYears * 12 / divisor);
+  var thresholdDateUnshifted = addMonths(custodyDate, thresholdMonths);
+  var thresholdDays = daysBetween(custodyDate, thresholdDateUnshifted);
+  // The crossing date moves forward by the delay: delayed days do not count.
+  var thresholdDate = addDays(thresholdDateUnshifted, delayDays);
+  var reasons = [
+    "Custody began on " + fmtDate(custodyDate) + " — " + custodyDays + " days in custody.",
+    "Offence: " + rec.offence + " (" + (rec.section || "section not recorded") + "). Maximum sentence: " + rec.maxYears + " years.",
+    rec.firstTime
+      ? "First-time offender: threshold is one-third of the maximum (S.479 proviso) — " + thresholdMonths + " months."
+      : "Threshold is one-half of the maximum (S.479(1)) — " + thresholdMonths + " months."
+  ];
+  if (delayDays > 0) {
+    reasons.push("Less: delay attributable to the accused (Explanation to S.479): " + delayDays + " days.");
+    reasons.push("Effective custody counted: " + effectiveDays + " days.");
+    reasons.push("Threshold date (including " + delayDays + " days of accused-caused delay): " + fmtDate(thresholdDate) + ".");
+  } else {
+    reasons.push("Threshold date: " + fmtDate(thresholdDate) + ".");
+  }
+  if (effectiveDays >= thresholdDays) {
+    reasons.push(daysPastText(effectiveDays - thresholdDays));
+    reasons.push("Note: under the provisos to S.479(1), the court may order continued detention after hearing the Public Prosecutor and recording reasons — release is not automatic.");
+    return { status:"past", custodyDays:custodyDays, delayDays:delayDays, effectiveDays:effectiveDays, thresholdDays:thresholdDays, thresholdMonths:thresholdMonths, thresholdDate:thresholdDate, daysPast:effectiveDays - thresholdDays, reasons:reasons };
+  }
+  var remaining = thresholdDays - effectiveDays;
+  if (remaining <= 30) {
+    reasons.push("Approaching the threshold — " + remaining + " days remaining. Flag now so the application is ready when the threshold is crossed.");
+    return { status:"approaching", custodyDays:custodyDays, delayDays:delayDays, effectiveDays:effectiveDays, thresholdDays:thresholdDays, thresholdMonths:thresholdMonths, thresholdDate:thresholdDate, daysRemaining:remaining, reasons:reasons };
+  }
+  reasons.push("Below the threshold — " + remaining + " days remaining.");
+  return { status:"below", custodyDays:custodyDays, delayDays:delayDays, effectiveDays:effectiveDays, thresholdDays:thresholdDays, thresholdMonths:thresholdMonths, thresholdDate:thresholdDate, daysRemaining:remaining, reasons:reasons };
+}
+
+function draftApplication(rec, r, today){
+  today = today || todayUTC();
+  var isPast = r.status === "past";
+  var n = 0;
+  function num(t){ return (++n) + ". " + t; }
+  var lines = [];
+  lines.push(isPast ? "DRAFT — NOT FILED. Generated by BailSetu (demo)."
+                   : "PRE-PREPARED DRAFT — NOT FILED. Generated by BailSetu (demo). Do not file before the threshold date.");
+  lines.push("Requires review and approval by an authorised legal professional before filing.");
+  lines.push("");
+  lines.push("Application under Section 479(1), Bharatiya Nagarik Suraksha Sanhita, 2023");
+  lines.push("Before the Hon'ble Court of __________ (to be filled by counsel)");
+  lines.push("");
+  lines.push("In the matter of: " + rec.name + " (" + rec.id + "), undertrial presently lodged at " + (rec.jail || "__________ (to be filled)") + ".");
+  lines.push("");
+  lines.push("May it please this Hon'ble Court:");
+  lines.push(num("The applicant has been in custody since " + fmtDate(parseDate(rec.custodyStart)) + ", i.e. " + r.custodyDays + " days."));
+  if ((r.delayDays || 0) > 0) {
+    lines.push(num("Delay attributable to the applicant is " + r.delayDays + " days, excluded from the custody period in accordance with the Explanation to Section 479. Effective custody counted: " + r.effectiveDays + " days."));
+  }
+  lines.push(num("The alleged offence is " + rec.offence + " (" + (rec.section || "section to be filled") + "), for which the maximum punishment is " + rec.maxYears + " years."));
+  lines.push(num(rec.firstTime
+    ? "The applicant is a first-time offender (never convicted of any offence). Under the proviso to Section 479(1), the applicant is eligible to be considered for release on bail after detention of one-third of the maximum period — " + r.thresholdMonths + " months."
+    : "Under Section 479(1), the applicant is eligible to be considered for release on bail after detention of one-half of the maximum period — " + r.thresholdMonths + " months."));
+  if (isPast) {
+    lines.push(num((r.daysPast || 0) === 0
+      ? "The applicant has undergone effective detention of " + r.effectiveDays + " days, reaching the threshold date of " + fmtDate(r.thresholdDate) + " today."
+      : "The applicant has undergone effective detention of " + r.effectiveDays + " days, exceeding the threshold date of " + fmtDate(r.thresholdDate) + " by " + (r.daysPast || 0) + " days."));
+  } else {
+    lines.push(num("The applicant will cross the threshold on " + fmtDate(r.thresholdDate) + " (in " + (r.daysRemaining || 0) + " days). This draft is pre-prepared so it can be filed on or after that date."));
+  }
+  lines.push("[Counsel to address provisos to S.479(1)]");
+  lines.push(num("The Hon'ble Supreme Court (order dated 23 August 2024) has held Section 479 applies retrospectively."));
+  lines.push("");
+  lines.push("PRAYER: It is respectfully prayed that this Hon'ble Court may be pleased to consider the applicant for release on bail under Section 479(1) BNSS, on such terms as this Hon'ble Court deems fit." + (isPast ? "" : " (To be filed on or after " + fmtDate(r.thresholdDate) + ".)"));
+  lines.push("");
+  lines.push("Note: Custody dates in this draft MUST be verified against authorised prison records before filing. This draft was generated on " + fmtDate(today) + " from the record above.");
+  return lines.join("\n");
+}
+
+// ---------- Assisted extraction: rule-based pattern matching, NOT AI ----------
+// Finds dates and section numbers in pasted remand / warrant text. Every
+// extraction must be verified by a human before use.
+// The section regex is anchored with \b so ordinary words ending in "s"
+// ("days 15", "has 3 cases") do not yield false-positive sections, while
+// "u/s 420" still matches (the "/" gives the boundary).
+var MONTHS = { january:0, february:1, march:2, april:3, may:4, june:5, july:6, august:7, september:8, october:9, november:10, december:11,
+  jan:0, feb:1, mar:2, apr:3, jun:5, jul:6, aug:7, sep:8, sept:8, oct:9, nov:10, dec:11 };
+function extractFromText(text){
+  text = text || "";
+  var dates = [];
+  function pushDate(y, m, d, raw, pos){
+    if (m < 0 || m > 11 || d < 1 || d > 31) return;
+    var dt = new Date(Date.UTC(y, m, d));
+    if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== m || dt.getUTCDate() !== d) return; // rejects 31 Feb etc.
+    var iso = dt.toISOString().slice(0,10);
+    if (!dates.some(function(x){ return x.iso === iso; })) dates.push({ iso:iso, raw:raw, pos:pos });
+  }
+  var re1 = /(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/g, m1;
+  while ((m1 = re1.exec(text)) !== null) { pushDate(+m1[3], +m1[2] - 1, +m1[1], m1[0], m1.index); }
+  var re2 = /(\d{1,2})(?:st|nd|rd|th)?\s+(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\.?\s+(\d{4})/gi, m2;
+  while ((m2 = re2.exec(text)) !== null) { pushDate(+m2[3], MONTHS[m2[2].toLowerCase()], +m2[1], m2[0], m2.index); }
+  var sections = [];
+  var re3 = /\b(?:Section|Sec\.?|S\.?)\s*(\d{1,4}[A-Z]?)\b/gi, m3;
+  while ((m3 = re3.exec(text)) !== null) { var s = m3[1].toUpperCase(); if (sections.indexOf(s) < 0) sections.push(s); }
+  var re4 = /\b(\d{1,4}[A-Z]?)\s*(?:IPC|BNSS|BNS|CrPC)/gi, m4;
+  while ((m4 = re4.exec(text)) !== null) { var s2 = m4[1].toUpperCase(); if (sections.indexOf(s2) < 0) sections.push(s2); }
+  // Custody-date candidate: the date CLOSEST in the text to a remand/custody
+  // mention (remand = start of judicial custody), else the first date.
+  var custodyCandidate = null;
+  var kwPositions = [];
+  var kwRe = /(remand|custody)/gi, kwm;
+  while ((kwm = kwRe.exec(text)) !== null) { kwPositions.push(kwm.index); }
+  if (kwPositions.length && dates.length) {
+    var best = null, bestDist = Infinity;
+    for (var k = 0; k < dates.length; k++) {
+      for (var w = 0; w < kwPositions.length; w++) {
+        var dist = Math.abs(dates[k].pos - kwPositions[w]);
+        if (dist < bestDist) { bestDist = dist; best = dates[k].iso; }
+      }
+    }
+    custodyCandidate = best;
+  }
+  if (!custodyCandidate && dates.length) custodyCandidate = dates[0].iso;
+  return { dates:dates, sections:sections, custodyCandidate:custodyCandidate };
+}
+
+// ---------- Family access ----------
+// Families see only their own record, behind an access code issued by the
+// jail / DLSA. In this demo one code opens all sample records.
+var FAMILY_DEMO_CODE = "DEMO-2026";
+function familyAccessOk(code){ return (code || "") === FAMILY_DEMO_CODE; }
+
+// ---------- Audit log: hash chain ----------
+// Each entry chains to the previous one: hash = FNV-1a(prev + "|" + time + "|" + msg).
+// Recomputing the chain detects any edited, deleted or inserted entry.
+// (Demo-grade integrity: in deployment the log is server-side and append-only.)
+function auditHash(prev, time, msg){
+  var str = prev + "|" + time + "|" + msg;
+  var h = 2166136261;
+  for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return (h >>> 0).toString(16).padStart(8, "0");
+}
+function verifyAuditChain(entries){
+  var prev = "GENESIS";
+  for (var i = 0; i < entries.length; i++) {
+    var expected = auditHash(prev, entries[i].time, entries[i].msg);
+    if (expected !== entries[i].hash) return { ok:false, brokenAt:i };
+    prev = entries[i].hash;
+  }
+  return { ok:true, brokenAt:-1 };
+}
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { parseDate:parseDate, fmtDate:fmtDate, isoDate:isoDate, addDays:addDays, addMonths:addMonths, daysBetween:daysBetween, computeEligibility:computeEligibility, draftApplication:draftApplication, extractFromText:extractFromText, OFFENCES:OFFENCES, findOffence:findOffence, buildSamples:buildSamples, familyAccessOk:familyAccessOk, FAMILY_DEMO_CODE:FAMILY_DEMO_CODE, auditHash:auditHash, verifyAuditChain:verifyAuditChain };
+}
+</script>
+<script>
+// ---------- Language + plain-language explainers ----------
+var LANG = "en";
+var I18N = {
+  en: {
+    subtitle:"Custody-time tracker + bail draft assistant for undertrials — shows who may be past the Section 479 (BNSS) bail threshold, explains why, and drafts the application for human review. Rule-based and AI-ready: extraction and triage use transparent rules today; the same pipeline is designed for an AI layer over authorised records. MY Bharat Hack for Social Cause 2027 — Theme 4: Governance & Civic Technology.",
+    demo:"DEMONSTRATION ONLY.", demoText:"All records below are fictional sample data. BailSetu shows <em>potential</em> eligibility only — an authorised legal professional must review and approve every application before filing. No real personal data is used or stored; everything runs in your browser.",
+    tabFamily:"👨‍👩‍👦 Undertrial & Family", tabPublic:"🌍 Public", tabOfficer:"🏛️ Officer (Jail / DLSA / Court)",
+    famTitle:"Is your family member eligible to apply for bail?",
+    famIntro:"BailSetu checks whether a person in jail may be able to apply for bail under a law called Section 479. The law says: if a person has spent a long time in jail while waiting for trial, they may be released on bail. Enter the undertrial ID and your family access code below.",
+    famSearchLabel:"Undertrial ID", famCodeLabel:"Family access code", famBtn:"Check status",
+    famDemoCode:"Demo access code for all sample records: DEMO-2026",
+    famHint:"Try UT-001, UT-002 or UT-004 to see the different outcomes. Legal documents are in English.",
+    famAccessDenied:"Access denied: incorrect family access code.",
+    famPrivacyTitle:"Your information stays private",
+    famPrivacy:"Records are never listed publicly. In deployment, each family gets a unique access code from the jail or the DLSA, and a family sees only its own family member's record. Without the correct code, nothing is shown.",
+    famHelpTitle:"Need free legal help?",
+    famHelp:"Every district has a District Legal Services Authority (DLSA) that gives free legal aid to people who cannot afford a lawyer, including undertrials. Ask the jail authorities or the DLSA office in your district. BailSetu does not replace a lawyer — it helps the lawyer and the family see the position clearly.",
+    notFound:"No record found with that ID. Check the ID and try again.",
+    famWhatMeans:"What this means", famWhatNext:"What happens next", famDays:"Days counted towards the bail limit",
+    pubTitle:"The problem, in plain numbers", pubS1:"Undertrials in Indian prisons (NCRB, 2022)", pubS2:"of all prisoners are undertrials — in jail, not convicted", pubS3:"of undertrials held for over 3 years (NCRB, 2022)", pubS4Num:"Nearly half", pubS4:"of undertrials are under 30 (NCRB Prison Statistics India)",
+    pubProblem:"The law already says these people must be released on bail after a fixed time in custody (Section 479). But nobody tracks custody time systematically — so people stay in jail for years after the law says they can apply for bail. BailSetu fixes the tracking, not the law.",
+    pubDemoTitle:"What this demo shows (sample data)", pubDemoNote:"Counts only — no names or personal details are shown in this view. The demo uses 8 fictional records.",
+    pubHowTitle:"How BailSetu helps", pubHow1T:"1. Finds the cases", pubHow1:"Custody time is calculated from authorised prison records, so people who crossed the legal limit are not missed.",
+    pubHow2T:"2. Explains in plain words", pubHow2:"Every flag comes with reasons anyone can read — no legal degree needed to understand the position.",
+    pubHow3T:"3. A human decides", pubHow3:"A legal professional reviews every draft before filing. The court always makes the final decision.",
+    pubSafeTitle:"Safeguards — your data stays protected",
+    pubSafe1:"Human approval first. No application is ever filed automatically.",
+    pubSafe2:"Only authorised access. In deployment, only authorised officers and legal professionals see real records, with role-based access and audit logs.",
+    pubSafe3:"No new law, no new hardware. BailSetu makes the existing system work — jail superintendents are already required to apply when the threshold is crossed (Section 479(3)).",
+    pubSafe4:"Nothing hidden. Every decision shows its reasons; nothing is decided by a black box.",
+    pubStat1:"Undertrials (sample)", pubStat2:"May be past threshold", pubStat3:"Approaching threshold", pubStat4:"Need review / information"
+  },
+  hi: {
+    subtitle:"विचाराधीन कैदियों के लिए हिरासत-समय ट्रैकर + ज़मानत मसौदा सहायक — धारा 479 (BNSS) के तहत कौन ज़मानत के लिए आवेदन कर सकता है, यह बताता है, कारण समझाता है, और मानवीय समीक्षा के लिए आवेदन का मसौदा बनाता है। नियम-आधारित और AI-तैयार: निष्कर्षण और जाँच आज पारदर्शी नियमों से होती है; वही प्रक्रिया अधिकृत रिकॉर्ड पर AI परत के लिए बनाई गई है। MY Bharat Hack for Social Cause 2027 — विषय 4: शासन और नागरिक तकनीक।",
+    demo:"केवल प्रदर्शन के लिए।", demoText:"नीचे दिए गए सभी रिकॉर्ड काल्पनिक नमूना डेटा हैं। BailSetu केवल संभावित पात्रता दिखाता है — हर आवेदन को दाखिल करने से पहले अधिकृत कानूनी पेशेवर की समीक्षा और अनुमति आवश्यक है। कोई वास्तविक व्यक्तिगत डेटा इस्तेमाल या संग्रहित नहीं होता; सब कुछ आपके ब्राउज़र में चलता है।",
+    tabFamily:"👨‍👩‍👦 विचाराधीन कैदी और परिवार", tabPublic:"🌍 जनता", tabOfficer:"🏛️ अधिकारी (जेल / DLSA / अदालत)",
+    famTitle:"क्या आपके परिजन ज़मानत के लिए आवेदन कर सकते हैं?",
+    famIntro:"BailSetu यह जाँच करता है कि जेल में बंद कोई व्यक्ति धारा 479 नामक कानून के तहत ज़मानत के लिए आवेदन कर सकता है या नहीं। कानून कहता है: अगर कोई व्यक्ति मुकदमे की प्रतीक्षा में लंबे समय से जेल में है, तो उसे ज़मानत पर रिहा किया जा सकता है। नीचे कैदी की ID और अपना परिवार एक्सेस कोड डालें।",
+    famSearchLabel:"कैदी की ID", famCodeLabel:"परिवार एक्सेस कोड", famBtn:"स्थिति देखें",
+    famDemoCode:"डेमो एक्सेस कोड (सभी नमूना रिकॉर्ड के लिए): DEMO-2026",
+    famHint:"अलग-अलग नतीजे देखने के लिए UT-001, UT-002 या UT-004 आज़माएँ। कानूनी दस्तावेज़ अंग्रेज़ी में होते हैं।",
+    famAccessDenied:"पहुँच अस्वीकृत: गलत परिवार एक्सेस कोड।",
+    famPrivacyTitle:"आपकी जानकारी निजी रहती है",
+    famPrivacy:"रिकॉर्ड कभी सार्वजनिक रूप से सूचीबद्ध नहीं होते। असली व्यवस्था में हर परिवार को जेल या DLSA से एक अलग एक्सेस कोड मिलेगा, और परिवार सिर्फ़ अपने परिजन का रिकॉर्ड देख सकेगा। सही कोड के बिना कुछ नहीं दिखाया जाएगा।",
+    famHelpTitle:"मुफ़्त कानूनी मदद चाहिए?",
+    famHelp:"हर ज़िले में ज़िला विधिक सेवा प्राधिकरण (DLSA) होता है जो उन लोगों को मुफ़्त कानूनी सहायता देता है जो वकील का खर्च नहीं उठा सकते, जिनमें विचाराधीन कैदी भी शामिल हैं। जेल अधिकारियों या अपने ज़िले के DLSA कार्यालय से संपर्क करें। BailSetu वकील की जगह नहीं लेता — यह वकील और परिवार को स्थिति साफ़ समझने में मदद करता है।",
+    notFound:"इस ID से कोई रिकॉर्ड नहीं मिला। ID जाँचकर फिर कोशिश करें।",
+    famWhatMeans:"इसका क्या मतलब है", famWhatNext:"आगे क्या होगा", famDays:"ज़मानत सीमा के लिए गिने गए दिन",
+    pubTitle:"समस्या, साफ़ आँकड़ों में", pubS1:"भारतीय जेलों में विचाराधीन कैदी (NCRB, 2022)", pubS2:"सभी कैदियों में से विचाराधीन हैं — जेल में हैं, दोषी नहीं ठहराए गए", pubS3:"विचाराधीन कैदी 3 साल से ज़्यादा समय से जेल में हैं (NCRB, 2022)", pubS4Num:"लगभग आधे", pubS4:"विचाराधीन कैदी 30 साल से कम उम्र के हैं (NCRB Prison Statistics India)",
+    pubProblem:"कानून पहले से कहता है कि हिरासत में एक तय समय के बाद इन लोगों को ज़मानत पर रिहा किया जाना चाहिए (धारा 479)। लेकिन हिरासत का समय व्यवस्थित रूप से कोई नहीं गिनता — इसलिए लोग कानून की सीमा बीतने के सालों बाद भी जेल में रहते हैं। BailSetu कानून नहीं, गिनती ठीक करता है।",
+    pubDemoTitle:"यह डेमो क्या दिखाता है (नमूना डेटा)", pubDemoNote:"सिर्फ़ गिनती — इस दृश्य में कोई नाम या व्यक्तिगत जानकारी नहीं दिखाई जाती। डेमो में 8 काल्पनिक रिकॉर्ड हैं।",
+    pubHowTitle:"BailSetu कैसे मदद करता है", pubHow1T:"1. मामलों को ढूँढता है", pubHow1:"अधिकृत जेल रिकॉर्ड से हिरासत का समय गिना जाता है, ताकि कानूनी सीमा पार कर चुके लोग छूटें नहीं।",
+    pubHow2T:"2. आसान शब्दों में समझाता है", pubHow2:"हर नतीजे के साथ कारण दिए जाते हैं जिन्हें कोई भी पढ़कर समझ सकता है — समझने के लिए कानून की डिग्री ज़रूरी नहीं।",
+    pubHow3T:"3. फैसला इंसान करता है", pubHow3:"दाखिल करने से पहले हर मसौदे की समीक्षा कानूनी पेशेवर करते हैं। अंतिम फैसला हमेशा अदालत का होता है।",
+    pubSafeTitle:"सुरक्षा — आपका डेटा सुरक्षित रहता है",
+    pubSafe1:"पहले इंसानी अनुमति। कोई भी आवेदन अपने आप दाखिल नहीं होता।",
+    pubSafe2:"सिर्फ़ अधिकृत लोगों की पहुँच। असली व्यवस्था में केवल अधिकृत अधिकारी और कानूनी पेशेवर ही असली रिकॉर्ड देखेंगे, भूमिका-आधारित पहुँच और ऑडिट लॉग के साथ।",
+    pubSafe3:"नया कानून नहीं, नया हार्डवेयर नहीं। BailSetu मौजूदा व्यवस्था को काम करवाता है — सीमा पार होने पर जेल अधीक्षक को आवेदन करना पहले से ही ज़रूरी है (धारा 479(3))।",
+    pubSafe4:"कुछ भी छिपा नहीं। हर फैसला अपने कारणों के साथ दिखता है; कोई फैसला ब्लैक बॉक्स से नहीं होता।",
+    pubStat1:"विचाराधीन कैदी (नमूना)", pubStat2:"सीमा पार कर चुके हो सकते हैं", pubStat3:"सीमा के नज़दीक हैं", pubStat4:"समीक्षा / जानकारी चाहिए"
+  }
+};
+function t(key){ return (I18N[LANG] && I18N[LANG][key]) || I18N.en[key] || key; }
+function applyLang(){
+  document.querySelectorAll("[data-i18n]").forEach(function(el){ el.innerHTML = t(el.getAttribute("data-i18n")); });
+  document.getElementById("langEn").setAttribute("aria-pressed", LANG === "en" ? "true" : "false");
+  document.getElementById("langHi").setAttribute("aria-pressed", LANG === "hi" ? "true" : "false");
+  document.documentElement.lang = LANG === "hi" ? "hi" : "en";
+  renderPublic();
+}
+var PLAIN_STATUS = {
+  en: { past:"May apply for bail", approaching:"Bail time is near", below:"Bail time has not come yet", blocked:"Bail under this law is not possible", "needs-info":"Information is incomplete", "manual-review":"A legal expert must review this case" },
+  hi: { past:"ज़मानत के लिए आवेदन हो सकता है", approaching:"ज़मानत का समय नज़दीक है", below:"अभी ज़मानत का समय नहीं आया", blocked:"इस कानून से ज़मानत नहीं हो सकती", "needs-info":"जानकारी अधूरी है", "manual-review":"कानूनी विशेषज्ञ की समीक्षा ज़रूरी है" }
+};
+function plainExplain(rec, r){
+  var n = rec.name;
+  if (LANG === "hi") {
+    if (r.status === "past") return { means:"रिकॉर्ड के अनुसार, " + n + " ज़मानत की सीमा पार कर चुके हैं। इसका मतलब है कि धारा 479 के तहत ज़मानत के लिए आवेदन पर विचार किया जा सकता है। अंतिम फैसला अदालत का होगा।",
+      next:"अगला कदम: एक कानूनी पेशेवर आवेदन की जाँच करेंगे और उसे अदालत में दाखिल करेंगे।" };
+    if (r.status === "approaching") return { means:"" + n + " ज़मानत की सीमा के करीब हैं — " + r.daysRemaining + " दिन बाकी हैं। सीमा पार होते ही आवेदन किया जा सकेगा।",
+      next:"अगला कदम: आवेदन अभी तैयार रखा जाएगा, ताकि सीमा पार होते ही दाखिल हो सके।" };
+    if (r.status === "below") return { means:"" + n + " ने अभी ज़मानत की सीमा तक का समय जेल में नहीं बिताया है — " + r.daysRemaining + " दिन बाकी हैं।",
+      next:"अगला कदम: समय पूरा होने पर स्थिति फिर से जाँची जाएगी।" };
+    if (r.status === "blocked") return { means:"" + n + " के खिलाफ़ एक से ज़्यादा मामले चल रहे हैं, इसलिए इस कानून (धारा 479) से ज़मानत नहीं मिल सकती।",
+      next:"अगला कदम: वकील कोई दूसरा कानूनी रास्ता देखेंगे।" };
+    if (r.status === "needs-info") return { means:"रिकॉर्ड में कुछ जानकारी अधूरी है (" + (r.missing || []).join(", ") + "), इसलिए अभी स्थिति नहीं बताई जा सकती।",
+      next:"अगला कदम: जेल रिकॉर्ड से अधूरी जानकारी पूरी की जाएगी।" };
+    return { means:"" + n + " के मामले में सज़ा मौत या उम्रकैद हो सकती है, इसलिए यह कानून सीधे लागू नहीं होता।",
+      next:"अगला कदम: कानूनी विशेषज्ञ इस मामले की अलग से समीक्षा करेंगे।" };
+  }
+  if (r.status === "past") return { means:"As per the record, " + n + " has crossed the bail limit. That means an application for bail can be considered under Section 479. The final decision is always the court's.",
+    next:"Next step: a legal professional will check the application and file it in court." };
+  if (r.status === "approaching") return { means:"" + n + " is close to the bail limit — " + r.daysRemaining + " days remaining. An application can be made as soon as the limit is crossed.",
+    next:"Next step: the application will be kept ready so it can be filed the day the limit is crossed." };
+  if (r.status === "below") return { means:"" + n + " has not yet spent enough time in custody to reach the bail limit — " + r.daysRemaining + " days remaining.",
+    next:"Next step: the position will be checked again when the time is complete." };
+  if (r.status === "blocked") return { means:"More than one case is pending against " + n + ", so bail under this law (Section 479) is not possible.",
+    next:"Next step: the lawyer will look for a different legal route." };
+  if (r.status === "needs-info") return { means:"Some information in the record is incomplete (" + (r.missing || []).join(", ") + "), so the position cannot be shown yet.",
+    next:"Next step: the missing information will be completed from the jail record." };
+  return { means:"The offence in " + n + "'s case may carry death or life imprisonment, so this law does not apply directly.",
+    next:"Next step: a legal expert will review this case separately." };
+}
+</script>
+<script>
+// ---------- App state + rendering (browser only) ----------
+// Escape everything user-controlled before it reaches innerHTML.
+function esc(s){
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){
+    return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+  });
+}
+var records = buildSamples();
+var selectedId = null;
+var STATUS_META = {
+  "past":        { label:"May be past threshold", cls:"b-past" },
+  "approaching": { label:"Approaching threshold", cls:"b-approaching" },
+  "below":       { label:"Below threshold", cls:"b-below" },
+  "blocked":     { label:"Blocked — S.479(2)", cls:"b-blocked" },
+  "needs-info":  { label:"Needs information", cls:"b-needs" },
+  "manual-review":{ label:"Manual legal review", cls:"b-manual" }
+};
+
+// ---------- Audit log: persistent, hash-chained ----------
+var AUDIT_KEY = "bailsetu-audit-v1";
+var audit = [];
+try {
+  var stored = JSON.parse(localStorage.getItem(AUDIT_KEY) || "[]");
+  if (Array.isArray(stored)) audit = stored;
+} catch (e) { audit = []; }
+function saveAudit(){ try { localStorage.setItem(AUDIT_KEY, JSON.stringify(audit)); } catch (e) {} }
+function renderAudit(){
+  var el = document.getElementById("audit");
+  if (!el) return;
+  var shown = audit.slice().reverse();
+  el.innerHTML = shown.map(function(a){
+    return "<li>" + esc(a.time) + " — " + esc(a.msg) + " <span class='muted'>[hash " + esc(a.hash) + "]</span></li>";
+  }).join("") || "<li>No audit entries yet.</li>";
+}
+function log(msg){
+  var time = new Date().toLocaleTimeString();
+  var prev = audit.length ? audit[audit.length - 1].hash : "GENESIS";
+  audit.push({ time:time, msg:msg, prev:prev, hash:auditHash(prev, time, msg) });
+  saveAudit();
+  renderAudit();
+}
+function switchRole(role){
+  ["family","public","officer"].forEach(function(r){
+    document.getElementById("view-" + r).hidden = (r !== role);
+    document.getElementById("tab-" + r).setAttribute("aria-selected", r === role ? "true" : "false");
+  });
+  if (role === "officer") { renderStats(); renderTable(); }
+  if (role === "public") renderPublic();
+  log("Switched to " + role + " view");
+}
+function showFamily(id, code){
+  var box = document.getElementById("famResult");
+  if (!familyAccessOk(code)) {
+    box.innerHTML = "<div class='card'><div class='err'>" + esc(t("famAccessDenied")) + "</div></div>";
+    box.scrollIntoView({ behavior:"smooth" });
+    log("Family view: access denied (wrong access code)");
+    return;
+  }
+  var rec = records.find(function(x){ return x.id === id; });
+  if (!rec) { box.innerHTML = "<div class='card'><p>" + esc(t("notFound")) + "</p></div>"; box.scrollIntoView({ behavior:"smooth" }); return; }
+  var r = computeEligibility(rec);
+  var ex = plainExplain(rec, r);
+  box.innerHTML = "<div class='card' aria-live='polite'><h2 style='margin-top:0'>" + esc(rec.id) + " — " + esc(rec.name) + "</h2>" +
+    "<div class='big-status'><span class='badge " + STATUS_META[r.status].cls + "'>" + esc(PLAIN_STATUS[LANG][r.status]) + "</span></div>" +
+    "<p><b>" + esc(t("famDays")) + ":</b> " + (r.effectiveDays != null ? r.effectiveDays : "—") + "</p>" +
+    "<div class='meaning'><b>" + esc(t("famWhatMeans")) + ":</b> " + esc(ex.means) + "</div>" +
+    "<div class='nextstep'><b>" + esc(t("famWhatNext")) + ":</b> " + esc(ex.next) + "</div></div>";
+  box.scrollIntoView({ behavior:"smooth" });
+  log("Family view: checked status of " + rec.id);
+}
+function renderPublic(){
+  var counts = { past:0, approaching:0, below:0, blocked:0, "needs-info":0, "manual-review":0 };
+  records.forEach(function(rec){ counts[computeEligibility(rec).status]++; });
+  var needsReview = counts["blocked"] + counts["needs-info"] + counts["manual-review"];
+  var el = document.getElementById("pubStats");
+  if (!el) return;
+  el.innerHTML =
+    '<div class="stat"><div class="n">' + records.length + '</div><div class="l">' + esc(t("pubStat1")) + '</div></div>' +
+    '<div class="stat"><div class="n" style="color:#b3261e">' + counts.past + '</div><div class="l">' + esc(t("pubStat2")) + '</div></div>' +
+    '<div class="stat"><div class="n" style="color:#b45309">' + counts.approaching + '</div><div class="l">' + esc(t("pubStat3")) + '</div></div>' +
+    '<div class="stat"><div class="n" style="color:#1565c0">' + needsReview + '</div><div class="l">' + esc(t("pubStat4")) + '</div></div>';
+}
+function getFiltered(){
+  var q = document.getElementById("search").value.trim().toLowerCase();
+  var f = document.getElementById("filter").value;
+  return records.filter(function(rec){
+    var r = computeEligibility(rec);
+    if (f !== "all" && r.status !== f) return false;
+    if (q && (rec.id.toLowerCase().indexOf(q) < 0 && rec.name.toLowerCase().indexOf(q) < 0 && rec.offence.toLowerCase().indexOf(q) < 0 && (rec.section || "").toLowerCase().indexOf(q) < 0)) return false;
+    return true;
+  });
+}
+function renderStats(){
+  var counts = { past:0, approaching:0, below:0, blocked:0, "needs-info":0, "manual-review":0 };
+  records.forEach(function(rec){ counts[computeEligibility(rec).status]++; });
+  var needsReview = counts["blocked"] + counts["needs-info"] + counts["manual-review"];
+  document.getElementById("stats").innerHTML =
+    '<div class="stat"><div class="n">' + records.length + '</div><div class="l">Undertrials (sample data)</div></div>' +
+    '<div class="stat"><div class="n" style="color:#b3261e">' + counts.past + '</div><div class="l">May be past S.479 threshold</div></div>' +
+    '<div class="stat"><div class="n" style="color:#b45309">' + counts.approaching + '</div><div class="l">Approaching threshold (30 days)</div></div>' +
+    '<div class="stat"><div class="n" style="color:#1565c0">' + needsReview + '</div><div class="l">Need review / information</div></div>';
+  document.getElementById("dutyCount").textContent = counts.past + " record(s) past the threshold need a S.479(3) application, and " + counts.approaching + " approach it within 30 days.";
+}
+function renderTable(){
+  var rows = getFiltered().map(function(rec){
+    var r = computeEligibility(rec);
+    var m = STATUS_META[r.status];
+    return "<tr data-id='" + esc(rec.id) + "' tabindex='0' class='" + (rec.id === selectedId ? "selected" : "") + "'>" +
+      "<td>" + esc(rec.id) + "</td><td>" + esc(rec.name) + "</td><td>" + esc(rec.offence) + "</td>" +
+      "<td>" + esc(rec.section || "—") + "</td>" +
+      "<td>" + (rec.maxYears > 0 ? esc(rec.maxYears) + " yrs" : "—") + "</td>" +
+      "<td>" + (rec.custodyStart ? esc(fmtDate(parseDate(rec.custodyStart))) : "— missing") + "</td>" +
+      "<td>" + (r.effectiveDays != null ? r.effectiveDays : "—") + "</td>" +
+      "<td>" + (r.thresholdDate ? esc(fmtDate(r.thresholdDate)) : "—") + "</td>" +
+      "<td><span class='badge " + m.cls + "'>" + esc(m.label) + "</span></td></tr>";
+  }).join("");
+  document.getElementById("tbody").innerHTML = rows || "<tr><td colspan='9'>No records match this filter.</td></tr>";
+  document.getElementById("tableNote").textContent = "Showing " + getFiltered().length + " of " + records.length + " records. Click a row — or press Enter on it — to open its reasoning and draft.";
+  document.querySelectorAll("#tbody tr[data-id]").forEach(function(tr){
+    tr.addEventListener("click", function(){ selectRecord(tr.getAttribute("data-id")); });
+    tr.addEventListener("keydown", function(e){
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectRecord(tr.getAttribute("data-id")); }
+    });
+  });
+}
+function selectRecord(id){
+  selectedId = id;
+  var rec = records.find(function(x){ return x.id === id; });
+  var r = computeEligibility(rec);
+  var m = STATUS_META[r.status];
+  document.getElementById("detailCard").style.display = "block";
+  document.getElementById("detailTitle").textContent = rec.id + " — " + rec.name + " ";
+  var fields = "<p><b>Offence:</b> " + esc(rec.offence) + "<br><b>Section:</b> " + esc(rec.section || "—") + "<br><b>Maximum sentence:</b> " + (rec.maxYears > 0 ? esc(rec.maxYears) + " years" : "— (death / life)") +
+    "<br><b>Custody since:</b> " + (rec.custodyStart ? esc(fmtDate(parseDate(rec.custodyStart))) : "— missing");
+  if (r.custodyDays != null) fields += "<br><b>Days in custody (actual):</b> " + r.custodyDays;
+  if ((r.delayDays || 0) > 0) fields += "<br><b>Less: delay attributable to accused:</b> " + r.delayDays + " days (Explanation to S.479)";
+  if (r.effectiveDays != null) fields += "<br><b>Days counted:</b> " + r.effectiveDays;
+  fields += "<br><b>First-time offender:</b> " + (rec.firstTime ? "Yes" : "No") +
+    "<br><b>Multiple cases pending:</b> " + (rec.multipleCases ? "Yes" : "No") +
+    "<br><b>Death / life punishment:</b> " + (rec.deathOrLife ? "Yes" : "No") +
+    "<br><b>Jail:</b> " + esc(rec.jail || "—") + "</p>" +
+    "<p><span class='badge " + m.cls + "'>" + esc(m.label) + "</span></p>";
+  document.getElementById("detailFields").innerHTML = fields;
+  document.getElementById("detailReasons").innerHTML = r.reasons.map(function(x){ return "<li>" + esc(x) + "</li>"; }).join("");
+  var draftBtn = document.getElementById("draftBtn");
+  var hint = document.getElementById("draftHint");
+  document.getElementById("draftWrap").style.display = "none";
+  document.getElementById("approveCheck").checked = false;
+  document.getElementById("approveBtn").disabled = true;
+  document.getElementById("approveMsg").textContent = "";
+  if (r.status === "past" || r.status === "approaching" || r.status === "below") {
+    draftBtn.disabled = false;
+    hint.textContent = r.status === "past"
+      ? "Draft ready to generate. Nothing is filed from here — approval by an authorised legal professional is required."
+      : "Pre-prepared draft: the threshold is not yet crossed. The draft will say so and must not be filed before " + fmtDate(r.thresholdDate) + ".";
+  } else {
+    draftBtn.disabled = true;
+    hint.textContent = r.status === "blocked"
+      ? "No S.479 draft can be generated for this record (S.479(2))."
+      : r.status === "manual-review"
+      ? "Draft generation is disabled until an authorised legal professional reviews this record."
+      : "Add the missing information first (custody start date / maximum sentence).";
+  }
+  renderTable();
+  log("Viewed record " + rec.id + " (" + m.label + ")");
+  document.getElementById("detailCard").scrollIntoView({ behavior:"smooth", block:"start" });
+}
+// Tabs: click + arrow-key navigation (standard tab pattern).
+var TAB_ORDER = ["family", "public", "officer"];
+TAB_ORDER.forEach(function(role){
+  document.getElementById("tab-" + role).addEventListener("click", function(){ switchRole(role); });
+});
+document.getElementById("tablist").addEventListener("keydown", function(e){
+  if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+  var cur = TAB_ORDER.findIndex(function(r){ return document.getElementById("tab-" + r).getAttribute("aria-selected") === "true"; });
+  var next = e.key === "ArrowRight" ? (cur + 1) % 3 : (cur + 2) % 3;
+  switchRole(TAB_ORDER[next]);
+  document.getElementById("tab-" + TAB_ORDER[next]).focus();
+});
+document.getElementById("langEn").addEventListener("click", function(){ LANG = "en"; applyLang(); log("Language switched to English"); });
+document.getElementById("langHi").addEventListener("click", function(){ LANG = "hi"; applyLang(); log("Language switched to Hindi"); });
+document.getElementById("famBtn").addEventListener("click", function(){
+  var id = document.getElementById("famSearch").value.trim().toUpperCase();
+  var code = document.getElementById("famCode").value.trim();
+  if (!id) { document.getElementById("famResult").innerHTML = "<div class='card'><p>" + esc(t("notFound")) + "</p></div>"; return; }
+  showFamily(id, code);
+});
+document.getElementById("famSearch").addEventListener("keydown", function(e){ if (e.key === "Enter") document.getElementById("famBtn").click(); });
+document.getElementById("famCode").addEventListener("keydown", function(e){ if (e.key === "Enter") document.getElementById("famBtn").click(); });
+document.getElementById("search").addEventListener("input", renderTable);
+document.getElementById("filter").addEventListener("change", renderTable);
+document.getElementById("addBtn").addEventListener("click", function(){
+  document.getElementById("addCard").style.display = "block";
+  document.getElementById("addCard").scrollIntoView({ behavior:"smooth" });
+});
+document.getElementById("cancelBtn").addEventListener("click", function(){
+  document.getElementById("addCard").style.display = "none";
+  document.getElementById("formMsg").textContent = "";
+});
+// Offence lookup: selecting a BNS section fills max sentence + death/life flag.
+function buildOffenceSelect(){
+  var sel = document.getElementById("fOffenceSel");
+  var opts = "<option value=''>— Select offence (BNS) —</option>";
+  OFFENCES.forEach(function(o){
+    opts += "<option value='" + esc(o.section) + "'>" + esc(o.offence) + " — " + esc(o.section) + (o.deathOrLife ? " — death / life" : " — max " + o.maxYears + " yrs") + "</option>";
+  });
+  opts += "<option value='__custom'>Custom / other offence (enter manually)</option>";
+  sel.innerHTML = opts;
+}
+function applyOffenceLookup(){
+  var sel = document.getElementById("fOffenceSel");
+  var maxEl = document.getElementById("fMax");
+  var deathEl = document.getElementById("fDeath");
+  var customEl = document.getElementById("fOffenceCustom");
+  var o = findOffence(sel.value);
+  customEl.style.display = (sel.value === "__custom") ? "block" : "none";
+  if (!o) { // Custom or nothing: manual entry.
+    maxEl.readOnly = false; maxEl.placeholder = "e.g. 3"; maxEl.value = "";
+    deathEl.disabled = false;
+    return;
+  }
+  if (o.deathOrLife) { maxEl.value = ""; maxEl.placeholder = "— (death / life)"; }
+  else { maxEl.value = o.maxYears; }
+  maxEl.readOnly = true;
+  deathEl.checked = o.deathOrLife;
+  deathEl.disabled = true;
+}
+document.getElementById("fOffenceSel").addEventListener("change", applyOffenceLookup);
+document.getElementById("saveBtn").addEventListener("click", function(){
+  var id = document.getElementById("fId").value.trim();
+  var sel = document.getElementById("fOffenceSel");
+  var o = findOffence(sel.value);
+  var isCustom = sel.value === "__custom";
+  var offence = o ? o.offence : document.getElementById("fOffenceCustom").value.trim();
+  var section = o ? o.section : "";
+  var maxYears = parseFloat(document.getElementById("fMax").value);
+  var custody = document.getElementById("fCustody").value;
+  var delay = parseInt(document.getElementById("fDelay").value, 10);
+  var msg = document.getElementById("formMsg");
+  if (!id) { msg.textContent = "Undertrial ID is required."; return; }
+  if (!o && !isCustom) { msg.textContent = "Select an offence from the BNS lookup, or choose Custom."; return; }
+  if (isCustom && !offence) { msg.textContent = "Enter the offence name for a custom entry."; return; }
+  if (records.some(function(x){ return x.id === id; })) { msg.textContent = "That ID already exists."; return; }
+  if (custody && parseDate(custody) > todayUTC()) { msg.textContent = "Custody start date cannot be in the future."; return; }
+  if (isNaN(delay) || delay < 0) { msg.textContent = "Delay must be 0 or more days."; return; }
+  if (o) { maxYears = o.deathOrLife ? 0 : o.maxYears; }
+  if (isCustom && !(maxYears > 0) && !document.getElementById("fDeath").checked) { msg.textContent = "For a custom offence, enter a maximum sentence or tick death/life."; return; }
+  records.unshift({ id:id, name:document.getElementById("fName").value.trim() || id, offence:offence, section:section,
+    maxYears: isNaN(maxYears) ? 0 : maxYears,
+    custodyStart: custody, delayDays: delay,
+    firstTime: document.getElementById("fFirst").checked,
+    multipleCases: document.getElementById("fMulti").checked, deathOrLife: o ? o.deathOrLife : document.getElementById("fDeath").checked,
+    jail: document.getElementById("fJail").value.trim() });
+  ["fId","fName","fMax","fCustody","fDelay","fJail","fOffenceCustom"].forEach(function(i){ document.getElementById(i).value = ""; });
+  document.getElementById("fOffenceCustom").style.display = "none";
+  document.getElementById("fOffenceSel").selectedIndex = 0;
+  document.getElementById("fMax").readOnly = false;
+  document.getElementById("fDeath").disabled = false;
+  ["fFirst","fMulti","fDeath"].forEach(function(i){ document.getElementById(i).checked = false; });
+  document.getElementById("addCard").style.display = "none";
+  msg.textContent = "";
+  renderStats(); renderTable(); renderPublic();
+  log("Record added: " + id + " (" + (offence || "custom offence") + ")");
+  selectRecord(id);
+});
+document.getElementById("draftBtn").addEventListener("click", function(){
+  var rec = records.find(function(x){ return x.id === selectedId; });
+  var r = computeEligibility(rec);
+  document.getElementById("draftText").textContent = draftApplication(rec, r);
+  document.getElementById("draftBadge").textContent = r.status === "past" ? "DRAFT — NOT FILED" : "PRE-PREPARED DRAFT — DO NOT FILE YET";
+  document.getElementById("draftWrap").style.display = "block";
+  log("Draft bail application generated for " + rec.id + " (" + r.status + ")");
+});
+document.getElementById("approveCheck").addEventListener("change", function(){
+  document.getElementById("approveBtn").disabled = !this.checked;
+});
+document.getElementById("approveBtn").addEventListener("click", function(){
+  var rec = records.find(function(x){ return x.id === selectedId; });
+  document.getElementById("approveMsg").textContent = "Approved — recorded in the audit log. This is a demo: in deployment, approval would be tied to the reviewer’s authorised account.";
+  log("Draft APPROVED by authorised legal professional (human approval recorded) for " + rec.id);
+  document.getElementById("approveBtn").disabled = true;
+});
+document.getElementById("verifyAuditBtn").addEventListener("click", function(){
+  var res = verifyAuditChain(audit);
+  var el = document.getElementById("verifyResult");
+  if (res.ok) { el.innerHTML = "✓ Audit chain intact — " + audit.length + " entries, none modified."; }
+  else { el.innerHTML = "⚠ Audit chain BROKEN at entry " + (res.brokenAt + 1) + " — possible tampering."; }
+  log("Audit log verified (" + (res.ok ? "intact" : "BROKEN") + ")");
+});
+document.getElementById("extractSampleBtn").addEventListener("click", function(){
+  document.getElementById("extractText").value = "The accused was arrested on 12/03/2024 and remanded to judicial custody on 15 March 2024 under Section 303 BNS. Next hearing 20-04-2024.";
+});
+document.getElementById("extractBtn").addEventListener("click", function(){
+  var text = document.getElementById("extractText").value;
+  var ex = extractFromText(text);
+  var box = document.getElementById("extractResult");
+  box.style.display = "block";
+  if (!ex.dates.length && !ex.sections.length) {
+    box.innerHTML = "<div class='warn'>No dates or section numbers found in this text. Try pasting the remand order or warrant text.</div>";
+    log("Extraction attempted — nothing found");
+    return;
+  }
+  var datesHtml = ex.dates.map(function(d){
+    var checked = d.iso === ex.custodyCandidate ? " checked" : "";
+    return "<label style='display:block;margin:4px 0'><input type='radio' name='exDate' value='" + esc(d.iso) + "'" + checked + "> " + esc(d.iso) + " (found as “" + esc(d.raw) + "”)</label>";
+  }).join("");
+  box.innerHTML = "<p><b>Custody-date candidates</b> — pick the correct one and verify it:</p>" + datesHtml +
+    "<p><b>Sections found:</b> " + (ex.sections.length ? esc(ex.sections.join(", ")) : "none") + "</p>" +
+    "<div class='warn'>Verify before use — extraction can be wrong. Confirming fills the Add form; nothing is saved until you add the record.</div>" +
+    "<button class='btn' id='extractUseBtn' style='margin-top:10px'>Use selected date in Add form</button>";
+  document.getElementById("extractUseBtn").addEventListener("click", function(){
+    var sel = document.querySelector("input[name='exDate']:checked");
+    if (!sel) return;
+    document.getElementById("fCustody").value = sel.value;
+    document.getElementById("addCard").style.display = "block";
+    document.getElementById("addCard").scrollIntoView({ behavior:"smooth" });
+    log("Extraction confirmed — custody date " + sel.value + " placed in Add form (unverified until record is added)");
+  });
+  log("Extraction ran — " + ex.dates.length + " date(s), " + ex.sections.length + " section(s) found");
+});
+buildOffenceSelect();
+applyLang();
+renderPublic();
+renderAudit();
+if (audit.length === 0) log("App loaded — " + records.length + " fictional sample records (demo data only).");
+</script>
+</body>
+</html>
