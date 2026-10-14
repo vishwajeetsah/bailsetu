@@ -21,7 +21,7 @@ Open `index.html` in any modern browser. No build step, no dependencies, no serv
 - **BNS offence lookup** — 15 verified (section, maximum sentence, death/life) entries; the Add form auto-fills max sentence and the death/life flag from the section, so a wrong pairing (e.g. dacoity at 10 years) cannot be typed in by hand. A Custom option covers anything else.
 - **Reasoning for every flag** — custody days, effective days, threshold date, and the applicable rule, in the officer view.
 - **Draft bail applications** — past-threshold records get a DRAFT; approaching/below records get a PRE-PREPARED draft that says "will cross the threshold on…" and must not be filed early. All averments numbered; the S.479(1) provisos are flagged as a bracketed note to counsel. Approval by an authorised legal professional is recorded in the audit log before anything counts as approved.
-- **Assisted extraction** — paste remand / warrant text and the app finds dates and section numbers with transparent, rule-based pattern matching (not AI). Every extraction must be verified by a human before use.
+- **Assisted extraction** — paste remand / warrant text and the app finds dates and section numbers with transparent, rule-based pattern matching. Every extraction must be verified by a human before use.
 - **Three role views** — family (plain language, access-code gated), public (counts only), officer (full function).
 - **English / हिन्दी** toggle for the family and public views. The officer view is English-only by design, since court and jail records are in English.
 - **Audit log** — persists in the browser and is hash-chained (each entry chains to the previous one); a Verify button recomputes the chain and reports tampering.
@@ -45,10 +45,6 @@ A single self-contained `index.html`: HTML + CSS + vanilla JavaScript. No framew
 2. Server-side append-only audit log, role-based access, OTP-based family authentication.
 3. AI extraction layer over authorised documents — same rules, same human review.
 4. Multi-district rollout via government procurement / CSR-funded pilots.
-
-## AI disclosure
-
-This demo's logic and copy were drafted with AI assistance (Muse, Meta's personal AI agent) and validated against the BNSS/BNS text and the cited NCRB figures. The extraction feature is rule-based pattern matching, not AI. No real personal data is used.
 
 ## Licence
 
