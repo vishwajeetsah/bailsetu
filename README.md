@@ -1,5 +1,7 @@
 # BailSetu — Custody-time tracker + bail draft assistant
 
+**Live demo:** https://vishwajeetsah.github.io/bailsetu/
+
 BailSetu shows which undertrials may have crossed the bail threshold under **Section 479, Bharatiya Nagarik Suraksha Sanhita (BNSS), 2023**, explains why in plain language, and drafts the bail application for review by an authorised legal professional. It is built for **MY Bharat Hack for Social Cause (HSC) 2027 — Theme 4: Governance & Civic Technology**.
 
 > **Demonstration only.** The app ships with 8 fictional sample records. It shows *potential* eligibility only — the court decides release. No real personal data is used or stored; everything runs in the browser.
