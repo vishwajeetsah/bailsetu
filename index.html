@@ -156,7 +156,7 @@
 
     <div class="card">
       <h2 style="margin-top:0">Assisted extraction from remand / warrant text</h2>
-      <p class="muted">Rule-based, <b>not AI</b>: it finds dates and section numbers in pasted text using transparent patterns, so every extraction is auditable. In deployment, an AI layer would do this extraction from authorised documents — under the same human review. <b>Always verify before use: extraction can be wrong.</b></p>
+      <p class="muted">Rule-based: it finds dates and section numbers in pasted text using transparent patterns, so every extraction is auditable. In deployment, an AI layer would do this extraction from authorised documents — under the same human review. <b>Always verify before use: extraction can be wrong.</b></p>
       <label for="extractText">Paste remand order / warrant text</label>
       <textarea id="extractText" placeholder="Example: The accused was arrested on 12/03/2024 and remanded to judicial custody on 15 March 2024 under Section 303 BNS. Next hearing 20-04-2024."></textarea>
       <div class="controls" style="margin-top:10px">
@@ -248,7 +248,7 @@
         <li><b>Data minimisation &amp; access control.</b> Deployment uses authorised prison records and verified court documents, strict role-based access, and audit logs. eCourts data is a supplementary source only. Families see only their own record, behind an access code.</li>
         <li><b>Transparent rules.</b> In this demo the triage uses published rules implementing S.479, with threshold dates computed on the calendar (leap-year safe) and shifted by any accused-caused delay. Section and maximum sentence come from a BNS lookup. In deployment, an AI layer would extract and reconcile custody dates from authorised records under the same rules and the same human review.</li>
       </ul>
-      <p class="muted">Figures: NCRB Prison Statistics India 2022 — 4,34,302 undertrials, 75.8% of all prisoners; 8.6% of undertrials held over 3 years. AI disclosure: this demo’s logic and copy were drafted with AI assistance (Muse, Meta’s personal AI agent) and validated against the BNSS/BNS text; the extraction feature is rule-based pattern matching, not AI; no real personal data is used. Sample records are fictional.</p>
+      <p class="muted">Figures: NCRB Prison Statistics India 2022 — 4,34,302 undertrials, 75.8% of all prisoners; 8.6% of undertrials held over 3 years. The extraction feature is rule-based pattern matching. No real personal data is used. Sample records are fictional.</p>
     </div>
   </section>
 </main>
